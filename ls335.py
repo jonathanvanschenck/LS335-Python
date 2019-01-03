@@ -1,10 +1,45 @@
+"""
+Created by: Jonathan Van Schenck
+Updated: 1/3/19
+
+This class is a wrapper for controlling a LakeShore 335 Temperature Controller via a usb connection
+"""
 import serial
 import numpy as np
 class LS335:
-    def __init__(self,comport="COM3",verbose=True):
+    """
+    Class controls the LakeShore 335 Temperature Controller via a usb connection
+    Inputs:
+    comport:            Name of the port used by the USB. See task manager for details.
+    
+    Variables:
+    .ser:               pySerial connection to the LS335
+    ._t:                String holding the termination characters for LS335 serial connection ("\r\n")
+    ._rdic:             Dictionary converting heater range names to their terminal index
+    ._rlist:            Numpy array holding heater range names in terminal index order
+    ._pid:              Numpy array holding most recently checked PID values for heater 1 and 2
+    ._sp:               Numpy array holding most recently checked setpoint values for heater 1 and 2
+    ._range:            Numpy array holding most recently checked Heater range names for heater 1 and 2
+    
+    Methods:
+    .close()            Closes the pySerial connection to the LS335
+    .off()              Turns off all heaters
+    .query(message)     Writes "message" to serial port, after adding appropriate termination characters,
+                          then it returns the serial port's response
+    .getTemp(which=1,   Returns the current read on thermometer "A" (which=1) or "B" (which=2) in units of
+             unit="K")    kelvin (unit="K") or celcius (unit="C")
+    .getHeat(which=1)   Returns the proportion of the heater range that heater 1/2 (which=1/2) is using
+    .getPID()           Updates ._pid and then returns the value of ._pid
+    .setPID(...)        Allows modification of pid parameters, and then updates ._pid
+    .getSP()            Updates ._sp and then returns the value of ._sp
+    .setSP(Temp,        Changes the setpoint of heater 1/2 (which=1/2) to Temp (units of K), then updates
+           which=1)       the value of ._sp
+    .getRange()         Updates ._range and then returns the value of ._range
+    .setRange(...)      Allows modification of heater ranges, and then updates ._range
+    """
+    def __init__(self,comport="COM3"):
         self.ser = serial.Serial(comport,baudrate=57600,parity=serial.PARITY_ODD,stopbits=1,bytesize=7,timeout=0.1)
         self._t = "\r\n"
-        self.verbose = verbose
         self._rdic = {"Off":"0","Low":"1","Medium":"2","High":"3"}
         self._rlist = np.array(["Off","Low","Medium","High"])
         self.getPID()
@@ -13,9 +48,6 @@ class LS335:
         
     def getPID(self):
         self._pid = np.array([[float(i[1:]) for i in (self.query("PID? "+j).split(self._t)[-2]).split(",")[-3:]] for j in ["1","2"]])
-        #self._pid = np.array([[float(i[1:]) for i in (self.query("PID? "+j)[:-2]).split(",")[-3:]] for j in ["1","2"]])
-        if self.verbose:
-            print()#Fix
         return self._pid
     def setPID(self,pid=None,p=None,i=None,d=None,which=1):
         if pid:
@@ -37,7 +69,6 @@ class LS335:
     
     def getSP(self):
         self._sp = np.array([float(self.query("SETP? "+j).split(self._t)[-2]) for j in ["1","2"]])
-        #self._sp = np.array([float(self.query("SETP? "+j)[-8:-2]) for j in ["1","2"]])
         return self._sp
     def setSP(self,Temp,which=1):
         self.query("SETP "+str(which)+","+str(Temp))
