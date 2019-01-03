@@ -47,9 +47,31 @@ class LS335:
         self.getRange()
         
     def getPID(self):
+        """
+        Checks the current PID parameters for heater 1&2, updates ._pid and then returns the value.
+        
+        Ouput:
+        ._pid:      The current PID parameters. Format: np.array([[p1,i1,d1],[p2,i2,d2]])
+        """
         self._pid = np.array([[float(i[1:]) for i in (self.query("PID? "+j).split(self._t)[-2]).split(",")[-3:]] for j in ["1","2"]])
         return self._pid
     def setPID(self,pid=None,p=None,i=None,d=None,which=1):
+        """
+        Allows updating of PID parameters. User can change either heater 1 (which=1) or heater 2 (which=2).
+        The specification of PID parameters can either be via a 1d tuple: (p,i,d) by specifying "pid". Else
+        any of p, i or d can be seperately specified to update only that parameter.
+        
+        Inputs:
+        pid:        1-tuple containing desired new PID parameters: (p,i,d). Specifying "None" for any
+                      element will result in that parameter NOT being modified from it's current value
+        p:          New p value for PID controller (See manual). Specifying "None" leaves value unchanged
+        i:          New i value for PID controller (See manual). Specifying "None" leaves value unchanged
+        d:          New d value for PID controller (See manual). Specifying "None" leaves value unchanged
+        which:      Integer specifying which heater to update. Must take value 1 or 2.
+        
+        Outputs:
+        ._pid:      The current PID parameters. Format: np.array([[p1,i1,d1],[p2,i2,d2]])
+        """
         if pid:
             pt,it,dt=pid
         else:
@@ -68,16 +90,54 @@ class LS335:
         return self.getPID()
     
     def getSP(self):
+        """
+        Checks the current setpoints, updates ._sp and then returns the value of ._sp
+        
+        Output:
+        ._sp:       The current setpoints for heaters 1/2 in units of K. Format: np.array([sp1,sp2])
+        """
         self._sp = np.array([float(self.query("SETP? "+j).split(self._t)[-2]) for j in ["1","2"]])
         return self._sp
     def setSP(self,Temp,which=1):
+        """
+        Allows updating of setpoint value. User can change either heater 1 (which=1) or heater 2 (which=2).
+        SP values must be cited in unites of Kelvin
+        
+        Input:
+        Temp:       New temperature setpoint value (units of Kelvin)
+        which:      Integer specifying which heater to update. Must take value 1 or 2.
+        
+        Output:
+        ._sp:       The current setpoints for heaters 1/2 in units of K. Format: np.array([sp1,sp2])
+        """
         self.query("SETP "+str(which)+","+str(Temp))
         return self.getSP()
 
     def getRange(self):
+        """
+        Checks the current heater range names, updates ._range and then returns the value of ._range
+        
+        Output:
+        ._range:     The current heater range names for heaters 1/2. Format: np.array([range1,range2])
+        """
         self._range = [self._rlist[int(self.query("RANGE? "+j)[-3:-2])] for j in ["1","2"]]
         return self._range
     def setRange(self,rangeStr=None,rangeInd=None,which=1):
+        """
+        Allows updating of heater range value. User can change either heater 1 (which=1) or heater 2 (which=2).
+        User can update either using the range name: ["Off","Low","Medium","High"], or by specifying the
+        corresponding range name index: [0,1,2,3]. Specifying both will result in the index overriding
+        the name.
+        
+        Input:
+        rangeStr:       A string containing the desired heater range. Value must be a string from the list:
+                          ["Off","Low","Medium","High"]
+        rangeInd:       An integer specifying the desired heater range. Value must be from the list: [0,1,2,3]
+        which:      Integer specifying which heater to update. Must take value 1 or 2.
+        
+        Output:
+        ._range:        The current heater range names for heaters 1/2. Format: np.array([range1,range2])
+        """
         if rangeStr:
             self.query("RANGE "+str(which)+","+self._rdic[rangeStr])
             return self.getRange()
@@ -88,16 +148,51 @@ class LS335:
         return self.getRange()
     
     def getTemp(self,which=1,unit="K"):
+        """
+        Returns the current temperature value
+        
+        Input:
+        which:      Integer specifying which heater to check. Must take value 1 or 2.
+        unit:       A string specifying either units of kelvin ("K") or celcius ("C")
+        
+        Output:
+        res:        A float holding the current temperature
+        """
         return float(self.query(unit+"RDG? "+str(which)).split(self._t)[-2])
 
     def getHeat(self,which=1):
+        """
+        Returns the current proportion of the total heater range that the heater is using.
+        
+        Input:
+        which:      Integer specifying which heater to check. Must take value 1 or 2.
+        
+        Output:
+        res:        A float from 0.0 to 1.0 specifying the heaters power
+        """
         return float(self.query("HTR? "+str(which)).split(self._t)[-2])/100
     
     def off(self):
+        """
+        Shuts down all heaters
+        """
         self.setRange("Off",which=1)
         self.setRange("Off",which=2)
     def query(self,message):
+        """
+        Allows user to send messages directly to the serial port connection (after attaching
+        appropriate termination characters) and returns the result
+        
+        Input:
+        message:    UTF-8 string to send to via the serial port (Do not include termination characters)
+        
+        Output:
+        res:        A UTF-8 string containing the serial port response
+        """
         self.ser.write((str(message)+self._t).encode())
         return self.ser.read(1000).decode()
     def close(self):
+        """
+        Closes pySerial connection
+        """
         self.ser.close()
