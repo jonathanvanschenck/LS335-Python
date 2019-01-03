@@ -7,6 +7,6 @@ ls.setSP(k+20)
 ls.setRange("High")
 while ls.getTemp<k+20:
   time.sleep(0.5)
-  print("Temp: {}K, Heater: {}%".format(ls.getTemp(),ls.getHeat()/100))
+  print("Temp: {0:.2f}K, Heater: {0:.1f}%".format(ls.getTemp(),ls.getHeat()/100))
 ls.off()
 ls.close()
